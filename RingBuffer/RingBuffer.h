@@ -9,7 +9,7 @@
 #ifndef __RingBuffer__RingBuffer__
 #define __RingBuffer__RingBuffer__
 
-#include <cstdlib>
+#include <atomic>
 
 template <class T>
 class RingBuffer
@@ -17,8 +17,8 @@ class RingBuffer
 private:
     T *p_buf;
     size_t length;
-    unsigned int read;
-    unsigned int write;
+    std::atomic<unsigned int> read;
+    std::atomic<unsigned int> write;
 
 public:
     RingBuffer(const unsigned long maxlength) :
@@ -33,9 +33,10 @@ public:
 
     int push(const T &input) {
         p_buf[write++] = input;
-        write %= length;
+        if(write.load() >= length)
+            write -= (int)length;
         
-        if (write == read) {
+        if (write.load() == read.load()) {
             read++;
         }
 
@@ -44,7 +45,8 @@ public:
     
     int pop(T &output) {
         output = p_buf[read++];
-        read %= length;
+        if(read.load() >= length)
+            read -= (int)length;
 
         return 0;
     }
